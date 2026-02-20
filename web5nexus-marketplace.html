@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web5 Nexus — Web3 Tool Marketplace</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080B12;
+    --bg2: #0D1120;
+    --bg3: #111828;
+    --border: rgba(255,255,255,0.07);
+    --border-glow: rgba(0,220,150,0.25);
+    --text: #E8EDF5;
+    --muted: #6B7A99;
+    --accent: #00DC96;
+    --accent2: #3D7FFF;
+    --accent3: #A855F7;
+    --orange: #FF6B35;
+    --card: rgba(13,17,32,0.8);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Instrument Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE TEXTURE */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  /* AMBIENT GLOW BLOBS */
+  .ambient {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .ambient-1 { width: 600px; height: 600px; background: rgba(0,220,150,0.04); top: -200px; left: -100px; }
+  .ambient-2 { width: 500px; height: 500px; background: rgba(61,127,255,0.05); top: 400px; right: -100px; }
+  .ambient-3 { width: 400px; height: 400px; background: rgba(168,85,247,0.04); bottom: 0; left: 30%; }
+
+  /* NAV */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 60px;
+    background: rgba(8,11,18,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .nav-logo span {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    -webkit-text-fill-color: var(--muted);
+    margin-left: 8px;
+    vertical-align: middle;
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: transparent;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--text); background: var(--bg3); }
+  .nav-links a.active { color: var(--text); }
+
+  .nav-actions { display: flex; gap: 10px; align-items: center; }
+
+  .btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    transition: all 0.2s;
+    border: none;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #080B12;
+    font-weight: 700;
+  }
+  .btn-primary:hover { background: #00f5a8; transform: translateY(-1px); box-shadow: 0 0 20px rgba(0,220,150,0.4); }
+
+  /* MAIN LAYOUT */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 60px);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* SIDEBAR */
+  aside {
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    position: sticky;
+    top: 60px;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .sidebar-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 20px 8px 8px;
+  }
+  .sidebar-label:first-child { margin-top: 0; }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+
+  .sidebar-item:hover { background: var(--bg3); color: var(--text); }
+  .sidebar-item.active {
+    background: rgba(0,220,150,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(0,220,150,0.15);
+  }
+
+  .sidebar-item .icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-item .badge {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--muted);
+  }
+
+  .sidebar-item.active .badge {
+    background: rgba(0,220,150,0.15);
+    border-color: rgba(0,220,150,0.3);
+    color: var(--accent);
+  }
+
+  /* MAIN CONTENT */
+  main {
+    padding: 32px 36px;
+    overflow-y: auto;
+  }
+
+  /* HERO BANNER */
+  .hero-banner {
+    border-radius: 16px;
+    background: linear-gradient(135deg, #0D1828 0%, #0D1120 50%, #0A0F1E 100%);
+    border: 1px solid var(--border);
+    padding: 36px 40px;
+    margin-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  }
+
+  .hero-grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,220,150,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,220,150,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse at 70% 50%, black 0%, transparent 70%);
+  }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(0,220,150,0.1);
+    border: 1px solid rgba(0,220,150,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+
+  .hero-tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+
+  .hero-title .highlight {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-subtitle {
+    color: var(--muted);
+    font-size: 14.5px;
+    line-height: 1.6;
+    max-width: 480px;
+    margin-bottom: 24px;
+  }
+
+  .hero-actions { display: flex; gap: 12px; align-items: center; }
+
+  .hero-stats {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 20px;
+    text-align: right;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* SECTION HEADERS */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+  }
+
+  .see-all {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+  }
+  .see-all:hover { opacity: 1; }
+
+  /* BUNDLE CARDS (Use Case Bundles) */
+  .bundles-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 44px;
+  }
+
+  .bundle-card {
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bundle-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .bundle-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255,255,255,0.12);
+  }
+
+  .bundle-card:hover::after { opacity: 1; }
+
+  .bundle-card.defi { --c: #00DC96; }
+  .bundle-card.gaming { --c: #A855F7; }
+  .bundle-card.ecommerce { --c: #3D7FFF; }
+  .bundle-card.healthcare { --c: #FF6B35; }
+
+  .bundle-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05); }
+
+  .bundle-icon-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .bundle-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    position: relative;
+  }
+
+  .bundle-card.defi .bundle-icon.primary { background: rgba(0,220,150,0.15); border-color: rgba(0,220,150,0.3); }
+  .bundle-card.gaming .bundle-icon.primary { background: rgba(168,85,247,0.15); border-color: rgba(168,85,247,0.3); }
+  .bundle-card.ecommerce .bundle-icon.primary { background: rgba(61,127,255,0.15); border-color: rgba(61,127,255,0.3); }
+  .bundle-card.healthcare .bundle-icon.primary { background: rgba(255,107,53,0.15); border-color: rgba(255,107,53,0.3); }
+
+  .bundle-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+
+  .bundle-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .bundle-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .mini-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  /* TOOL GRID */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 44px;
+  }
+
+  .tool-card {
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    backdrop-filter: blur(10px);
+    padding: 22px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .tool-card:hover {
+    border-color: rgba(255,255,255,0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  }
+
+  .tool-header { display: flex; align-items: flex-start; justify-content: space-between; }
+
+  .tool-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    border: 1px solid var(--border);
+  }
+
+  .tool-badges { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+    line-height: 1.4;
+  }
+
+  .badge-live { color: var(--accent); border-color: rgba(0,220,150,0.3); background: rgba(0,220,150,0.08); }
+  .badge-soon { color: var(--muted); border-color: var(--border); background: var(--bg3); }
+  .badge-new { color: var(--accent2); border-color: rgba(61,127,255,0.3); background: rgba(61,127,255,0.08); }
+  .badge-hot { color: var(--orange); border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.08); }
+
+  .tool-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .tool-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .tool-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+  }
+
+  .tool-chains {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chain-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0.6;
+  }
+
+  .btn-install {
+    padding: 6px 14px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Instrument Sans', sans-serif;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    transition: all 0.15s;
+  }
+
+  .btn-install:hover {
+    background: var(--accent);
+    color: #080B12;
+    border-color: var(--accent);
+  }
+
+  /* FEATURED TOOL */
+  .featured-tool {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 32px;
+    border-radius: 14px;
+    border: 1px solid var(--border-glow);
+    background: linear-gradient(135deg, rgba(0,220,150,0.05), rgba(61,127,255,0.03));
+    padding: 28px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 14px;
+  }
+
+  .featured-tool:hover { border-color: rgba(0,220,150,0.4); }
+
+  .featured-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .featured-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 10px;
+  }
+
+  .featured-desc {
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin-bottom: 18px;
+  }
+
+  .featured-metrics {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 18px;
+  }
+
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .metric-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .metric-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .featured-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dex-visual {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,220,150,0.2);
+    background: radial-gradient(circle at 30% 30%, rgba(0,220,150,0.15), transparent 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+    position: relative;
+  }
+
+  .dex-visual::before {
+    content: '';
+    position: absolute;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    border: 1px dashed rgba(0,220,150,0.15);
+    animation: spin 20s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .filter-pill {
+    padding: 7px 16px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-pill.active {
+    background: rgba(0,220,150,0.1);
+    color: var(--accent);
+    border-color: rgba(0,220,150,0.3);
+  }
+
+  .filter-pill:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,0.15); }
+
+  .search-box {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ICON BACKGROUNDS */
+  .icon-defi { background: rgba(0,220,150,0.12); }
+  .icon-swap { background: rgba(0,220,150,0.12); }
+  .icon-security { background: rgba(255,107,53,0.12); }
+  .icon-docs { background: rgba(61,127,255,0.12); }
+  .icon-fiat { background: rgba(168,85,247,0.12); }
+  .icon-blockchain { background: rgba(255,200,0,0.1); }
+  .icon-nft { background: rgba(168,85,247,0.12); }
+  .icon-analytics { background: rgba(0,220,150,0.1); }
+  .icon-email { background: rgba(61,127,255,0.1); }
+  .icon-connect { background: rgba(255,107,53,0.1); }
+  .icon-payment { background: rgba(0,220,150,0.1); }
+  .icon-notify { background: rgba(255,200,0,0.1); }
+
+  /* SECTION DIVIDER */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 36px 0;
+  }
+
+  /* STACK BUILDER */
+  .stack-builder {
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 28px;
+    margin-bottom: 44px;
+  }
+
+  .stack-builder-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .stack-builder-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .stack-select-info {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .stack-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stack-tool-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  .stack-tool-chip:hover { border-color: rgba(255,255,255,0.15); color: var(--accent); }
+
+  .stack-tool-chip.selected {
+    border-color: rgba(0,220,150,0.4);
+    background: rgba(0,220,150,0.08);
+    color: var(--accent);
+  }
+
+  .stack-tool-chip .chip-icon { font-size: 16px; }
+
+  .stack-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stack-summary {
+    display: flex;
+    gap: 20px;
+  }
+
+  .stack-summary-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .stack-summary-item strong {
+    color: var(--text);
+    display: block;
+    font-size: 16px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-banner { animation: fadeUp 0.5s ease forwards; }
+  .bundles-row { animation: fadeUp 0.5s 0.1s ease forwards; opacity: 0; animation-fill-mode: forwards; }
+  .tools-grid { animation: fadeUp 0.5s 0.2s ease forwards; opacity: 0; animation-fill-mode: forwards; }
+
+  /* CATEGORY COLORS IN SIDEBAR */
+  .sidebar-item .icon.c1 { background: rgba(0,220,150,0.1); }
+  .sidebar-item .icon.c2 { background: rgba(168,85,247,0.1); }
+  .sidebar-item .icon.c3 { background: rgba(61,127,255,0.1); }
+  .sidebar-item .icon.c4 { background: rgba(255,107,53,0.1); }
+  .sidebar-item .icon.c5 { background: rgba(255,200,0,0.1); }
+</style>
+</head>
+<body>
+
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+<div class="ambient ambient-3"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    Web5 Nexus <span>MARKETPLACE</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#" class="active">Marketplace</a></li>
+    <li><a href="#">Bundles</a></li>
+    <li><a href="#">Docs</a></li>
+    <li><a href="#">Pricing</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="btn btn-ghost">Sign In</button>
+    <button class="btn btn-primary">Get Started</button>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="sidebar-label">Browse</div>
+    <div class="sidebar-item active">
+      <div class="icon c1">🧩</div>
+      All Tools
+      <span class="badge">12</span>
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c1">⭐</div>
+      Featured
+      <span class="badge">3</span>
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c2">🔥</div>
+      Trending
+      <span class="badge">5</span>
+    </div>
+
+    <div class="sidebar-label">Use Cases</div>
+    <div class="sidebar-item">
+      <div class="icon c1">💰</div>
+      DeFi & Finance
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c2">🎮</div>
+      Gaming & Metaverse
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c3">🛍️</div>
+      E-commerce
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c4">🏥</div>
+      Healthcare
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c5">🏗️</div>
+      Real Estate
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c3">📦</div>
+      Supply Chain
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c2">🎓</div>
+      Education
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c4">🎬</div>
+      Media & Entertainment
+    </div>
+
+    <div class="sidebar-label">Categories</div>
+    <div class="sidebar-item">
+      <div class="icon c1">🔑</div>
+      Identity & Auth
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c2">🔄</div>
+      DEX & Swaps
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c3">🛡️</div>
+      Security
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c4">📄</div>
+      Documents
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c5">💳</div>
+      Payments
+    </div>
+    <div class="sidebar-item">
+      <div class="icon c1">📊</div>
+      Analytics
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- HERO -->
+    <div class="hero-banner">
+      <div class="hero-grid-bg"></div>
+      <div class="hero-tag">App Store for Web3</div>
+      <h1 class="hero-title">
+        Build any Web3 product<br>
+        with <span class="highlight">plug-and-play tools</span>
+      </h1>
+      <p class="hero-subtitle">
+        Pick tools, bundle them for your use case, integrate via API in days — not months.
+        40+ chains. 12 tools. Infinite possibilities.
+      </p>
+      <div class="hero-actions">
+        <button class="btn btn-primary">Explore Marketplace</button>
+        <button class="btn btn-ghost">Build a Bundle →</button>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat-card">
+          <div class="stat-value">40+</div>
+          <div class="stat-label">Blockchains</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">12</div>
+          <div class="stat-label">Tools Available</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">800+</div>
+          <div class="stat-label">Tokens Supported</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USE CASE BUNDLES -->
+    <div class="section-header">
+      <h2 class="section-title">Curated Bundles</h2>
+      <a href="#" class="see-all">View all bundles →</a>
+    </div>
+    <div class="bundles-row">
+      <div class="bundle-card defi">
+        <div class="bundle-icon-row">
+          <div class="bundle-icon primary">💰</div>
+          <div class="bundle-icon">🔄</div>
+          <div class="bundle-icon">🏦</div>
+          <div class="bundle-icon">🛡️</div>
+        </div>
+        <div class="bundle-name">DeFi & Finance</div>
+        <div class="bundle-meta">4 tools bundled</div>
+        <div class="bundle-tools">
+          <span class="mini-tag">Social Login</span>
+          <span class="mini-tag">Crosschain DEX</span>
+          <span class="mini-tag">Fiat Ramp</span>
+          <span class="mini-tag">Security</span>
+        </div>
+      </div>
+
+      <div class="bundle-card gaming">
+        <div class="bundle-icon-row">
+          <div class="bundle-icon primary">🎮</div>
+          <div class="bundle-icon">🎨</div>
+          <div class="bundle-icon">🔄</div>
+          <div class="bundle-icon">📊</div>
+        </div>
+        <div class="bundle-name">Gaming & Metaverse</div>
+        <div class="bundle-meta">4 tools bundled</div>
+        <div class="bundle-tools">
+          <span class="mini-tag">Social Login</span>
+          <span class="mini-tag">NFT Tools</span>
+          <span class="mini-tag">DEX</span>
+          <span class="mini-tag">Analytics</span>
+        </div>
+      </div>
+
+      <div class="bundle-card ecommerce">
+        <div class="bundle-icon-row">
+          <div class="bundle-icon primary">🛍️</div>
+          <div class="bundle-icon">💳</div>
+          <div class="bundle-icon">🏦</div>
+          <div class="bundle-icon">🛡️</div>
+        </div>
+        <div class="bundle-name">E-commerce & Retail</div>
+        <div class="bundle-meta">4 tools bundled</div>
+        <div class="bundle-tools">
+          <span class="mini-tag">Login</span>
+          <span class="mini-tag">Payments</span>
+          <span class="mini-tag">Fiat Ramp</span>
+          <span class="mini-tag">Security</span>
+        </div>
+      </div>
+
+      <div class="bundle-card healthcare">
+        <div class="bundle-icon-row">
+          <div class="bundle-icon primary">🏥</div>
+          <div class="bundle-icon">📄</div>
+          <div class="bundle-icon">🛡️</div>
+          <div class="bundle-icon">⛓️</div>
+        </div>
+        <div class="bundle-name">Healthcare & Pharma</div>
+        <div class="bundle-meta">4 tools bundled</div>
+        <div class="bundle-tools">
+          <span class="mini-tag">Onchain Docs</span>
+          <span class="mini-tag">Security</span>
+          <span class="mini-tag">Login</span>
+          <span class="mini-tag">Explorer</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOLS -->
+    <div class="section-header">
+      <h2 class="section-title">All Tools</h2>
+      <a href="#" class="see-all">Sort & filter</a>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <button class="filter-pill active">All</button>
+      <button class="filter-pill">Identity</button>
+      <button class="filter-pill">Finance</button>
+      <button class="filter-pill">Security</button>
+      <button class="filter-pill">Analytics</button>
+      <button class="filter-pill">Payments</button>
+      <div class="search-box">🔍 &nbsp;Search tools...</div>
+    </div>
+
+    <div class="tools-grid">
+
+      <!-- FEATURED -->
+      <div class="featured-tool">
+        <div>
+          <div class="featured-label">⚡ Featured Tool</div>
+          <div class="featured-title">Crosschain DEX & API</div>
+          <p class="featured-desc">
+            The most powerful cross-chain swap engine. Access 40+ blockchains and 800+ tokens with automatic
+            best-rate routing, deep liquidity pools, and a single unified API.
+          </p>
+          <div class="featured-metrics">
+            <div class="metric">
+              <span class="metric-value">40+</span>
+              <span class="metric-label">Chains</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value">800+</span>
+              <span class="metric-label">Tokens</span>
+            </div>
+            <div class="metric">
+              <span class="metric-value">~0.1%</span>
+              <span class="metric-label">Best Rate</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" style="font-size:13px">View Docs</button>
+            <button class="btn btn-ghost" style="font-size:13px">Live Demo</button>
+          </div>
+        </div>
+        <div class="featured-visual">
+          <div class="dex-visual">🔄</div>
+        </div>
+      </div>
+
+      <!-- TOOL CARDS -->
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon-wrap icon-defi">🔑</div>
+          <div class="tool-badges">
+            <span class="badge badge-live">● Live</span>
+            <span class="badge badge-hot">Hot</span>
+          </div>
+        </div>
+        <div>
+          <div class="tool-name">Social Login & Wallets</div>
+          <p class="tool-desc">Onboard users via Google, Apple, Discord. Auto-creates linked smart wallets. Enterprise-grade.</p>
+        </div>
+        <div class="tool-footer">
+          <div class="tool-chains"><div class="chain-dot"></div> EVM · Solana · 40+ chains</div>
+          <button class="btn-install">Integrate</button>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon-wrap icon-security">🛡️</div>
+          <div class="tool-badges">
+            <span class="badge badge-live">● Live</span>
+          </div>
+        </div>
+        <div>
+          <div class="tool-name">Web3 Security Audit & API</div>
+          <p class="tool-desc">Smart contract auditing, vulnerability detection, real-time threat monitoring and API protection.</p>
+        </div>
+        <div class="tool-footer">
+          <div class="tool-chains"><div class="chain-dot"></div> All EVM Chains</div>
+          <button class="btn-install">Integrate</button>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon-wrap icon-docs">📄</div>
+          <div class="tool-badges">
+            <span class="badge badge-live">● Live</span>
+            <span class="badge badge-new">New</span>
+          </div>
+        </div>
+        <div>
+          <div class="tool-name">Onchain Doc Issuer & API</div>
+          <p class="tool-desc">Issue, verify, and store tamper-proof certificates and credentials on-chain with QR verification.</p>
+        </div>
+        <div class="tool-footer">
+          <div class="tool-chains"><div class="chain-dot"></div> Multi-chain</div>
+          <button class="btn-install">Integrate</button>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon-wrap icon-fiat">🏦</div>
+          <div class="tool-badges">
+            <span class="badge badge-live">● Live</span>
+          </div>
+        </div>
+        <div>
+          <div class="tool-name">Fiat On/Off Ramp</div>
+          <p class="tool-desc">INR, USD, AED and more. Secure, compliant fiat-to-crypto conversion with integrated KYC/AML.</p>
+        </div>
+        <div class="tool-footer">
+          <div class="tool-chains"><div class="chain-dot"></div> 15+ Currencies</div>
+          <button class="btn-install">Integrate</button>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon-wrap icon-blockchain">⛓️</div>
+          <div class="tool-badges">
+            <span class="badge badge-soon">Coming Soon</span>
+          </div>
+        </div>
+        <div>
+          <div class="tool-name">One Click Blockchain</div>
+          <p class="tool-desc">Deploy your own blockchain and explorer in minutes. No deep technical expertise needed.</p>
+        </div>
+        <div class="tool-footer">
+          <div class="tool-chains"><div class="chain-dot" style="background:var(--muted)"></div> Custom Chain</div>
+          <button class="btn-install" style="opacity:0.5;cursor:not-allowed">Soon</button>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon-wrap icon-nft">🎨</div>
+          <div class="tool-badges">
+            <span class="badge badge-soon">Coming Soon</span>
+          </div>
+        </div>
+        <div>
+          <div class="tool-name">NFT & Token Tools API</div>
+          <p class="tool-desc">Mint, manage, and trade NFTs or ERC-20 tokens. Full marketplace functionality via low-code APIs.</p>
+        </div>
+        <div class="tool-footer">
+          <div class="tool-chains"><div class="chain-dot" style="background:var(--muted)"></div> EVM · Solana</div>
+          <button class="btn-install" style="opacity:0.5;cursor:not-allowed">Soon</button>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon-wrap icon-analytics">📊</div>
+          <div class="tool-badges">
+            <span class="badge badge-soon">Coming Soon</span>
+          </div>
+        </div>
+        <div>
+          <div class="tool-name">Wallet Analytics & CRM</div>
+          <p class="tool-desc">Track wallet activity, user retention, behavioral data and run wallet-based CRM campaigns.</p>
+        </div>
+        <div class="tool-footer">
+          <div class="tool-chains"><div class="chain-dot" style="background:var(--muted)"></div> All Chains</div>
+          <button class="btn-install" style="opacity:0.5;cursor:not-allowed">Soon</button>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon-wrap icon-payment">💳</div>
+          <div class="tool-badges">
+            <span class="badge badge-soon">Coming Soon</span>
+          </div>
+        </div>
+        <div>
+          <div class="tool-name">Multi Blockchain Payment Gateway</div>
+          <p class="tool-desc">Accept payments across 40+ blockchains with a single unified API. Auto-converts to preferred token.</p>
+        </div>
+        <div class="tool-footer">
+          <div class="tool-chains"><div class="chain-dot" style="background:var(--muted)"></div> 40+ Chains</div>
+          <button class="btn-install" style="opacity:0.5;cursor:not-allowed">Soon</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- STACK BUILDER -->
+    <div class="section-divider"></div>
+
+    <div class="stack-builder">
+      <div class="stack-builder-header">
+        <div>
+          <h2 class="stack-builder-title">🛠️ Build Your Custom Stack</h2>
+          <p style="color:var(--muted);font-size:13px;margin-top:4px">Mix and match tools to create the perfect Web3 solution for your use case</p>
+        </div>
+        <div class="stack-select-info">Select tools below</div>
+      </div>
+
+      <div class="stack-tools">
+        <div class="stack-tool-chip selected"><span class="chip-icon">🔑</span> Social Login</div>
+        <div class="stack-tool-chip selected"><span class="chip-icon">🔄</span> Crosschain DEX</div>
+        <div class="stack-tool-chip"><span class="chip-icon">🛡️</span> Security Audit</div>
+        <div class="stack-tool-chip"><span class="chip-icon">📄</span> Onchain Docs</div>
+        <div class="stack-tool-chip selected"><span class="chip-icon">🏦</span> Fiat Ramp</div>
+        <div class="stack-tool-chip"><span class="chip-icon">⛓️</span> One Click Chain</div>
+        <div class="stack-tool-chip"><span class="chip-icon">🎨</span> NFT Tools</div>
+        <div class="stack-tool-chip"><span class="chip-icon">📊</span> Wallet Analytics</div>
+        <div class="stack-tool-chip"><span class="chip-icon">📧</span> Web3 Email</div>
+        <div class="stack-tool-chip"><span class="chip-icon">🔌</span> dApp Connect</div>
+        <div class="stack-tool-chip"><span class="chip-icon">💳</span> Payment Gateway</div>
+        <div class="stack-tool-chip"><span class="chip-icon">🔔</span> Notifications</div>
+      </div>
+
+      <div class="stack-footer">
+        <div class="stack-summary">
+          <div class="stack-summary-item">
+            <strong>3</strong>
+            Tools Selected
+          </div>
+          <div class="stack-summary-item">
+            <strong>40+</strong>
+            Chains Covered
+          </div>
+        </div>
+        <button class="btn btn-primary">Generate Stack Bundle →</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Filter pills
+  document.querySelectorAll('.filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  // Sidebar items
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+
+  // Stack tool chips toggle
+  document.querySelectorAll('.stack-tool-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('selected');
+      const count = document.querySelectorAll('.stack-tool-chip.selected').length;
+      document.querySelector('.stack-summary-item strong').textContent = count;
+    });
+  });
+
+  // Bundle cards hover tilt
+  document.querySelectorAll('.bundle-card, .tool-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const rect = card.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      card.style.transform = `translateY(-3px) rotateX(${-y * 3}deg) rotateY(${x * 3}deg)`;
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+    });
+  });
+</script>
+</body>
+</html>
